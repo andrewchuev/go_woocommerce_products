@@ -48,28 +48,27 @@ func main() {
 
 func getProducts(w http.ResponseWriter, r *http.Request) {
 	baseQuery := `
-	SELECT 
-	    p.ID, 
-	    p.post_title, 
-	    m.meta_value, 
-	    p.post_content,
-	    t.name
-	FROM 
+	SELECT
+	    p.ID,
+	    p.post_title AS name,
+	    MAX(CASE WHEN m.meta_key = '_price' THEN m.meta_value ELSE NULL END) AS price,
+	    p.post_content AS description,
+	    GROUP_CONCAT(DISTINCT t.name ORDER BY t.name ASC) AS categories
+	FROM
 	    wp_posts p
-	INNER JOIN 
-	    wp_postmeta m ON p.ID = m.post_id 
-	LEFT JOIN 
+	LEFT JOIN
+	    wp_postmeta m ON p.ID = m.post_id AND m.meta_key = '_price'
+	LEFT JOIN
 	    wp_term_relationships tr ON p.ID = tr.object_id
-	LEFT JOIN 
-	    wp_term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-	LEFT JOIN 
+	LEFT JOIN
+	    wp_term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = 'product_cat'
+	LEFT JOIN
 	    wp_terms t ON tt.term_id = t.term_id
-	WHERE 
-	    p.post_type = 'product' 
-	    AND m.meta_key = '_price'
+	WHERE
+	    p.post_type = 'product'
 	`
 
-	// Filtration
+	// Фильтрация
 	params := r.URL.Query()
 	if category, ok := params["category"]; ok && len(category) > 0 {
 		baseQuery += fmt.Sprintf(" AND t.name = '%s'", category[0])
@@ -81,7 +80,10 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 		baseQuery += fmt.Sprintf(" AND m.meta_value <= '%s'", maxPrice[0])
 	}
 
-	// Sorting
+	// Группировка
+	baseQuery += " GROUP BY p.ID"
+
+	// Сортировка
 	if sort, ok := params["sort"]; ok && len(sort) > 0 {
 		order := "asc"
 		if o, ok := params["order"]; ok && len(o) > 0 && (o[0] == "desc" || o[0] == "asc") {
@@ -89,9 +91,9 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 		}
 		switch sort[0] {
 		case "price":
-			baseQuery += fmt.Sprintf(" ORDER BY m.meta_value %s", order)
+			baseQuery += fmt.Sprintf(" ORDER BY price %s", order)
 		case "name":
-			baseQuery += fmt.Sprintf(" ORDER BY p.post_title %s", order)
+			baseQuery += fmt.Sprintf(" ORDER BY name %s", order)
 		}
 	}
 
