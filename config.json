@@ -1,9 +1,9 @@
 {
   "database": {
-    "username": "your_username",
-    "password": "your_password",
-    "host": "127.0.0.1",
+    "username": "homestead",
+    "password": "secret",
+    "host": "192.168.88.56",
     "port": "3306",
-    "dbname": "wordpress"
+    "dbname": "urbanlab2"
   }
 }
