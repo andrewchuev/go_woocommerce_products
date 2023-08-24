@@ -11,9 +11,11 @@ import (
 )
 
 type Product struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Price string `json:"price"`
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Price       string `json:"price"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
 }
 
 var db *sql.DB
@@ -46,7 +48,29 @@ func main() {
 }
 
 func getProducts(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT ID, post_title, meta_value FROM wp_posts INNER JOIN wp_postmeta ON wp_posts.ID = wp_postmeta.post_id WHERE post_type = 'product' AND meta_key = '_price'")
+	query := `
+	SELECT 
+	    p.ID, 
+	    p.post_title, 
+	    m.meta_value, 
+	    p.post_content,
+	    t.name
+	FROM 
+	    wp_posts p
+	INNER JOIN 
+	    wp_postmeta m ON p.ID = m.post_id 
+	LEFT JOIN 
+	    wp_term_relationships tr ON p.ID = tr.object_id
+	LEFT JOIN 
+	    wp_term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+	LEFT JOIN 
+	    wp_terms t ON tt.term_id = t.term_id
+	WHERE 
+	    p.post_type = 'product' 
+	    AND m.meta_key = '_price' 
+	    AND (tt.taxonomy = 'product_cat' OR tt.taxonomy IS NULL)
+	`
+	rows, err := db.Query(query)
 	if err != nil {
 		http.Error(w, "Unable to query database", http.StatusInternalServerError)
 		return
@@ -57,7 +81,7 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var product Product
-		err := rows.Scan(&product.ID, &product.Name, &product.Price)
+		err := rows.Scan(&product.ID, &product.Name, &product.Price, &product.Description, &product.Category)
 		if err != nil {
 			http.Error(w, "Unable to scan row", http.StatusInternalServerError)
 			return

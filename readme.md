@@ -25,11 +25,11 @@ Configure the database connection parameters in the config.json file:
 
     {
         "database": {
-        "username": "your_username",
-        "password": "your_password",
-        "host": "127.0.0.1",
-        "port": "3306",
-        "dbname": "wordpress"
+            "username": "your_username",
+            "password": "your_password",
+            "host": "127.0.0.1",
+            "port": "3306",
+            "dbname": "wordpress"
         }
     }
 
