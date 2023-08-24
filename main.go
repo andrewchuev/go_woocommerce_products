@@ -34,7 +34,6 @@ func main() {
 		config.Database.Dbname,
 	)
 
-	// Подключение к базе данных
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -70,7 +69,7 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 	    AND m.meta_key = '_price'
 	`
 
-	// Фильтрация
+	// Filtration
 	params := r.URL.Query()
 	if category, ok := params["category"]; ok && len(category) > 0 {
 		baseQuery += fmt.Sprintf(" AND t.name = '%s'", category[0])
@@ -82,7 +81,7 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 		baseQuery += fmt.Sprintf(" AND m.meta_value <= '%s'", maxPrice[0])
 	}
 
-	// Сортировка
+	// Sorting
 	if sort, ok := params["sort"]; ok && len(sort) > 0 {
 		order := "asc"
 		if o, ok := params["order"]; ok && len(o) > 0 && (o[0] == "desc" || o[0] == "asc") {
