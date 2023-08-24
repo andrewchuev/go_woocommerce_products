@@ -48,7 +48,7 @@ func main() {
 }
 
 func getProducts(w http.ResponseWriter, r *http.Request) {
-	query := `
+	baseQuery := `
 	SELECT 
 	    p.ID, 
 	    p.post_title, 
@@ -67,10 +67,36 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 	    wp_terms t ON tt.term_id = t.term_id
 	WHERE 
 	    p.post_type = 'product' 
-	    AND m.meta_key = '_price' 
-	    AND (tt.taxonomy = 'product_cat' OR tt.taxonomy IS NULL)
+	    AND m.meta_key = '_price'
 	`
-	rows, err := db.Query(query)
+
+	// Фильтрация
+	params := r.URL.Query()
+	if category, ok := params["category"]; ok && len(category) > 0 {
+		baseQuery += fmt.Sprintf(" AND t.name = '%s'", category[0])
+	}
+	if minPrice, ok := params["min_price"]; ok && len(minPrice) > 0 {
+		baseQuery += fmt.Sprintf(" AND m.meta_value >= '%s'", minPrice[0])
+	}
+	if maxPrice, ok := params["max_price"]; ok && len(maxPrice) > 0 {
+		baseQuery += fmt.Sprintf(" AND m.meta_value <= '%s'", maxPrice[0])
+	}
+
+	// Сортировка
+	if sort, ok := params["sort"]; ok && len(sort) > 0 {
+		order := "asc"
+		if o, ok := params["order"]; ok && len(o) > 0 && (o[0] == "desc" || o[0] == "asc") {
+			order = o[0]
+		}
+		switch sort[0] {
+		case "price":
+			baseQuery += fmt.Sprintf(" ORDER BY m.meta_value %s", order)
+		case "name":
+			baseQuery += fmt.Sprintf(" ORDER BY p.post_title %s", order)
+		}
+	}
+
+	rows, err := db.Query(baseQuery)
 	if err != nil {
 		http.Error(w, "Unable to query database", http.StatusInternalServerError)
 		return
